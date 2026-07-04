@@ -1,5 +1,6 @@
  import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import StoreProvider from "@/redux/StoreProvider";
 
@@ -13,17 +14,30 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const metadata = {
+  title: "Nestro",
+  description: "Furniture Store",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <body>
-        <StoreProvider>
-          <Toaster position="top-right" richColors />
-          {children}
-        </StoreProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <StoreProvider>
+            <Toaster position="top-right" richColors />
+            {children}
+          </StoreProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
