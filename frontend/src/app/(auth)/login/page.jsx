@@ -180,19 +180,13 @@ export default function Page() {
           </button>
         </div>
 
-
         <div className="text-right mt-3  ">
-
-<Link href="/forget-Password">
-          <button type="button" className="text-[#93633e] cursor-pointer ">
-            Forgot password?
-          </button>
-</Link>
-
-        
-        
+          <Link href="/forget-Password">
+            <button type="button" className="text-[#93633e] cursor-pointer ">
+              Forgot password?
+            </button>
+          </Link>
         </div>
-
 
         <button
           disabled={loading}

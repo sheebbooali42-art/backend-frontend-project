@@ -200,11 +200,65 @@ const logout = (req, res) => {
   });
 };
 
+
+// const forgotPassword = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+
+//     const user = await UserModel.findOne({ email });
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     const otp = Math.floor(100000 + Math.random() * 900000);
+
+//     user.otp = otp;
+//     user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+//     await user.save();
+
+//     await sendOtpMail(
+//       email,
+//       "Reset Password OTP",
+//       `<h2>Your OTP is ${otp}</h2>
+//        <p>This OTP is valid for 10 minutes.</p>`,
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       message: "OTP sent successfully",
+//     });
+//   } catch (error) {
+//     console.log(error);
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal Server Error",
+//     });
+//   }
+// };
+
+
 const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, mobile } = req.body;
 
-    const user = await UserModel.findOne({ email });
+    let user;
+
+    if (email) {
+      user = await UserModel.findOne({ email });
+    } else if (mobile) {
+      user = await UserModel.findOne({ mobile });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Email or Mobile is required",
+      });
+    }
 
     if (!user) {
       return res.status(404).json({
@@ -213,35 +267,39 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     user.otp = otp;
-    user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
-
+    user.otpExpire = Date.now() + 10 * 60 * 1000;
     await user.save();
 
-    await sendMail(
+    if (email) {
+       await sendOtpMail(
       email,
       "Reset Password OTP",
       `<h2>Your OTP is ${otp}</h2>
        <p>This OTP is valid for 10 minutes.</p>`,
     );
+    } else {
+      
+      // Send OTP on Mobile using SMS provider
+    }
 
-    res.status(200).json({
+    return res.json({
       success: true,
       message: "OTP sent successfully",
     });
   } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Internal Server Error",
+      message: error.message,
     });
   }
 };
 
+
 const resetPassword = async (req, res) => {
+
   try {
     const { email, otp, password } = req.body;
 
@@ -268,11 +326,20 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    const hashPassword = await bcrypt.hash(password, 10);
+    // const hashPassword = await cryptr.hash(password, 10);
 
-    user.password = hashPassword;
-    user.otp = null;
-    user.otpExpire = null;
+    // user.password = hashPassword;
+    // user.otp = null;
+    // user.otpExpire = null;
+
+
+const encryptedPassword = cryptr.encrypt(password);
+
+user.password = encryptedPassword;
+user.otp = undefined;
+user.otpExpire = undefined;
+
+await user.save();
 
     await user.save();
 

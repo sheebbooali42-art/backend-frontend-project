@@ -1,32 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { usePathname, useRouter } from "next/navigation";
 import { FaShoppingCart, FaUser } from "react-icons/fa";
 import { IoSettingsOutline } from "react-icons/io5";
 import { toast } from "sonner";
-import ThemeToggle from "./ThemeToggle";
 
+import ThemeToggle from "./ThemeToggle";
 import { client } from "@/utils/helper";
 import { lsToCart } from "@/redux/features/cartSlice";
 
-// Static Configuration moved outside component to prevent re-creation on render
-const languages = [
+const LANGUAGES = [
   { code: "en", name: "English" },
   { code: "hi", name: "हिन्दी" },
   { code: "ur", name: "اردو" },
   { code: "ar", name: "العربية" },
 ];
 
-const translations = {
+const TRANSLATIONS = {
   en: {
     home: "Home",
     store: "Store",
     about: "About",
     contact: "Contact",
     checkout: "Checkout",
+    forgetPassword: "Forget Password",
   },
   hi: {
     home: "होम",
@@ -34,6 +34,7 @@ const translations = {
     about: "हमारे बारे में",
     contact: "संपर्क",
     checkout: "चेकआउट",
+    forgetPassword: "पासवर्ड भूल गए",
   },
   ur: {
     home: "ہوم",
@@ -41,6 +42,7 @@ const translations = {
     about: "ہمارے بارے میں",
     contact: "رابطہ",
     checkout: "چیک آؤٹ",
+    forgetPassword: "پاس ورڈ بھول گئے",
   },
   ar: {
     home: "الرئيسية",
@@ -48,66 +50,69 @@ const translations = {
     about: "من نحن",
     contact: "اتصل بنا",
     checkout: "الدفع",
+    forgetPassword: "نسيت كلمة المرور",
   },
 };
 
 export default function Header({ user }) {
-  const [language, setLanguage] = useState("en");
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
   const dispatch = useDispatch();
   const router = useRouter();
   const pathname = usePathname();
+
+  const dropdownRef = useRef(null);
+
+  const [language, setLanguage] = useState("en");
+  const [open, setOpen] = useState(false);
+
   const cartItems = useSelector((state) => state.cart.items);
 
-  const t = translations[language] || translations.en;
+  const t = TRANSLATIONS[language];
 
-  // Dynamic Navigation setup using translated strings
-  const menus = [
-    { name: t.home, path: "/" },
-    { name: t.store, path: "/store" },
-    { name: t.about, path: "/about" },
-    { name: t.contact, path: "/contact" },
-    { name: t.checkout, path: "/checkout" },
-  ];
+  const menus = useMemo(
+    () => [
+      { name: t.home, path: "/" },
+      { name: t.store, path: "/store" },
+      { name: t.about, path: "/about" },
+      { name: t.contact, path: "/contact" },
+      { name: t.checkout, path: "/checkout" },
+    ],
+    [t],
+  );
 
-  // Sync Language from LocalStorage
   useEffect(() => {
-    const saved = localStorage.getItem("lang");
-    if (saved) {
-      setLanguage(saved);
+    const savedLanguage = localStorage.getItem("lang");
+    if (savedLanguage) {
+      setLanguage(savedLanguage);
     }
-  }, []);
 
-  // Sync Cart items
-  useEffect(() => {
     dispatch(lsToCart());
   }, [dispatch]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+    const handleOutsideClick = (e) => {
+      if (!dropdownRef.current?.contains(e.target)) {
         setOpen(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  const handleLanguageChange = (e) => {
-    const lang = e.target.value;
-    setLanguage(lang);
-    localStorage.setItem("lang", lang);
-    window.location.reload();
+  const handleLanguageChange = ({ target }) => {
+    setLanguage(target.value);
+    localStorage.setItem("lang", target.value);
   };
 
   const handleLogout = async () => {
     try {
       const { data } = await client.post("/user/logout");
+
       toast.success(data.message);
+
       setOpen(false);
+
       router.replace("/");
       router.refresh();
     } catch (error) {
@@ -117,145 +122,136 @@ export default function Header({ user }) {
 
   return (
     <header className="sticky top-0 z-50 border-b bg-[#f8f6f2] shadow dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="flex h-24 items-center justify-between">
-          {/* Logo */}
-          <Link href="/">
-            <h1 className="cursor-pointer text-2xl font-semibold tracking-[0.3em] text-black dark:text-white md:text-3xl">
-              NESTRO.
-            </h1>
+      <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6">
+        {/* Logo */}
+        <Link href="/">
+          <h1 className="cursor-pointer text-3xl font-semibold tracking-[0.3em] text-black dark:text-white">
+            NESTRO.
+          </h1>
+        </Link>
+
+        {/* Navigation */}
+        <nav className="hidden items-center gap-4 md:flex">
+          {menus.map((menu) => (
+            <Link
+              key={menu.path}
+              href={menu.path}
+              className={`rounded-md px-4 py-2 transition ${
+                pathname === menu.path
+                  ? "bg-[#3a2418] text-white"
+                  : "text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white"
+              }`}
+            >
+              {menu.name}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-5">
+          <Link href="/cart" className="relative">
+            <FaShoppingCart size={30} className="text-black dark:text-white" />
+
+            <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-semibold text-white">
+              {cartItems.length}
+            </span>
           </Link>
 
-          {/* Navigation Menu */}
-          <nav className="hidden items-center gap-4 md:flex">
-            {menus.map((menu) => (
-              <Link
-                key={menu.path}
-                href={menu.path}
-                className={`rounded-md px-4 py-2 transition ${
-                  pathname === menu.path
-                    ? "bg-[#3a2418] text-white"
-                    : "text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white"
-                }`}
-              >
-                {menu.name}
-              </Link>
+          {user && (
+            <span className="hidden rounded-full bg-[#3a2418] px-4 py-2 text-sm font-medium text-white md:block">
+              {user.name}
+            </span>
+          )}
+
+          <ThemeToggle />
+
+          <select
+            value={language}
+            onChange={handleLanguageChange}
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+          >
+            {LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.name}
+              </option>
             ))}
-          </nav>
+          </select>
 
-          {/* Action Shell */}
-          <div className="flex items-center gap-5">
-            {/* Cart Counter */}
-            <Link href="/cart" className="relative text-black dark:text-white">
-              <FaShoppingCart size={30} />
-              <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-semibold text-white">
-                {cartItems?.length || 0}
-              </span>
-            </Link>
-
-            {/* Profile Tag (Desktop) */}
-            {user && (
-              <span className="hidden rounded-full bg-[#3a2418] px-4 py-2 text-sm font-medium text-white md:block">
-                {user.name}
-              </span>
-            )}
-
-            <ThemeToggle />
-
-            {/* Language Selector */}
-            <select
-              value={language}
-              onChange={handleLanguageChange}
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:outline-none"
+          {/* Settings */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setOpen((prev) => !prev)}
+              className="rounded-full p-2 hover:bg-gray-200 dark:hover:bg-zinc-700"
             >
-              {languages.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              <IoSettingsOutline
+                size={28}
+                className="text-gray-700 dark:text-white"
+              />
+            </button>
 
-            {/* Settings Dropdown Wrapper */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setOpen(!open)}
-                className="rounded-full p-2 transition hover:bg-gray-200 dark:hover:bg-zinc-700"
-              >
-                <IoSettingsOutline
-                  size={28}
-                  className="text-gray-700 dark:text-white"
-                />
-              </button>
+            {open && (
+              <div className="absolute right-0 mt-3 w-48 rounded-lg border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                {user ? (
+                  <>
+                    <div className="border-b border-gray-200 px-4 py-3 dark:border-zinc-700">
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-sm text-gray-500">Welcome back 👋</p>
+                    </div>
 
-              {open && (
-                <div className="absolute right-0 mt-3 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900 text-gray-700 dark:text-zinc-200">
-                  {user ? (
-                    <>
-                      <div className="border-b border-gray-200 px-4 py-3 dark:border-zinc-700">
-                        <p className="font-medium text-black dark:text-white">
-                          {user.name}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Welcome back 👋
-                        </p>
-                      </div>
+                    <Link
+                      href="/forget-Password"
+                      onClick={() => setOpen(false)}
+                      className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                    >
+                      Forget-Password
+                    </Link>
 
-                      <Link
-                        href="/profile"
-                        onClick={() => setOpen(false)}
-                        className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
-                      >
-                        Profile
-                      </Link>
+                    <Link
+                      href="/login"
+                      className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                    >
+                      Login
+                    </Link>
+                    
 
-                      <button
-                        onClick={handleLogout}
-                        className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
-                      >
-                        Logout
-                      </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-zinc-800"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setOpen(false)}
+                      className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                    >
+                      Login
+                    </Link>
 
-                      <Link href="/login">
-                        <button
-                          onClick={() => setOpen(false)}
-                          className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
-                        >
-                          Login
-                        </button>
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        href="/login"
-                        onClick={() => setOpen(false)}
-                        className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
-                      >
-                        Login
-                      </Link>
-                      <Link
-                        href="/register"
-                        onClick={() => setOpen(false)}
-                        className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
-                      >
-                        Register
-                      </Link>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Mobile Fallback Login Button */}
-            {!user && (
-              <Link href="/login" className="md:hidden">
-                <button className="flex items-center gap-2 rounded-full border border-gray-300 dark:border-zinc-700 px-4 py-2 text-sm text-black dark:text-white hover:bg-[#3a2418] hover:text-white transition">
-                  <FaUser />
-                  Login
-                </button>
-              </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setOpen(false)}
+                      className="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                    >
+                      Register
+                    </Link>
+                  </>
+                )}
+              </div>
             )}
           </div>
+
+          {!user && (
+            <Link href="/login" className="md:hidden">
+              <button className="flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm hover:bg-[#3a2418] hover:text-white dark:border-zinc-700">
+                <FaUser />
+                Login
+              </button>
+            </Link>
+          )}
         </div>
       </div>
     </header>

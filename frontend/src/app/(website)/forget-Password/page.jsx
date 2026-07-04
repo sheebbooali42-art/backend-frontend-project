@@ -8,27 +8,48 @@ import { client } from "@/utils/helper";
 export default function ForgotPasswordPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!email.trim()) {
-      return toast.error("Email is required");
+    if (!identifier.trim()) {
+      return toast.error("Email or Mobile Number is required");
+    }
+
+    // Check if input is email
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
+    // Check if input is 10 digit mobile number
+    const isMobile = /^[6-9]\d{9}$/.test(identifier);
+
+    if (!isEmail && !isMobile) {
+      return toast.error("Enter a valid Email or Mobile Number");
     }
 
     try {
       setLoading(true);
 
-      const { data } = await client.post("user/forgot-password", {
-        email,
-      });
+      const payload = isEmail
+        ? { email: identifier }
+        : { mobile: identifier };
+
+      const { data } = await client.post(
+        "user/forgot-password",
+        payload
+      );
 
       if (data.success) {
         toast.success(data.message);
 
-        router.push(`/verify-otp?email=${email}&type=forgot-password`);
+        router.push(
+          `/inter-otp?${
+            isEmail
+              ? `email=${identifier}`
+              : `mobile=${identifier}`
+          }&type=forgot-password`
+        );
       } else {
         toast.error(data.message);
       }
@@ -51,16 +72,16 @@ export default function ForgotPasswordPage() {
         </h1>
 
         <p className="text-gray-500 text-center mt-2 mb-8">
-          Enter your email to receive an OTP.
+          Enter your Email or Mobile Number to receive an OTP.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <input
-            type="email"
-            placeholder="Enter your email"
+            type="text"
+            placeholder="Enter Email or Mobile Number"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             className="w-full border rounded-xl px-5 py-4 outline-none focus:ring-2 focus:ring-black"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
           />
 
           <button
