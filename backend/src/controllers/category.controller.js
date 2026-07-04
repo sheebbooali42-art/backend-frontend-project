@@ -172,6 +172,7 @@ export {
     get,
     create,
     StatusUpdate,
+    
     deleteById,
     getById,
     update

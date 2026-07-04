@@ -4,8 +4,7 @@ import { useEffect } from "react";
 
 export default function Error({
     error,
-    reset,
-    
+    reset    
 }) {
     useEffect(() => {
         console.error(error);
